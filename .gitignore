@@ -1,0 +1,11 @@
+# Azure Pipelines agent runtime/secret files
+myagent/
+
+# Logs
+*.log
+
+# Editor/OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
