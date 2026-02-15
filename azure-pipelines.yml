@@ -4,7 +4,7 @@ trigger:                 # "trigger" = automatic run rules (CI trigger).
 
 # This section chooses WHERE the pipeline runs (what machine executes the steps).
 pool:                    # "pool" = the build agent pool to run your pipeline on.
-  vmImage: 'ubuntu-latest'  # Use a fresh Microsoft-hosted Ubuntu VM (new clean machine each run).
+  name: 'default'  # Use a fresh Microsoft-hosted Ubuntu VM (new clean machine each run).
 
 # "steps" is the list of actions the agent will perform in order.
 steps:                   # Start of the steps list (pipeline actions happen top-to-bottom).
