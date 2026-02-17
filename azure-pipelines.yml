@@ -9,6 +9,15 @@ pool:                    # "pool" = the build agent pool to run your pipeline on
 # "steps" is the list of actions the agent will perform in order.
 steps:                   # Start of the steps list (pipeline actions happen top-to-bottom).
 
+#this step installs dependencies before starting the web application
+- task: NodeTool@0 #uses node tool to tun the npm command
+  inputs:
+    versionSpec: '18.x'
+
+- script: |
+    npm install
+  displayName: 'Install dependencies'
+
 # This step deploys your files to Azure App Service.
 - task: AzureWebApp@1    # Use the built-in Azure DevOps task "AzureWebApp" version 1 for App Service deployments.
   inputs:                # "inputs" are the settings/parameters that this task needs.
