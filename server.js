@@ -12,6 +12,13 @@
 
 // app.listen(port, () => console.log(`Listening on ${port}`));
 
+//add appInsights telemetry
+const appInsights = require("applicationinsights");
+
+appInsights.setup().start();
+
+const client = appInsights.defaultClient;
+
 
 const express = require("express");
 const app = express();
@@ -30,7 +37,27 @@ app.get("/error", (req, res) => {
 
 // Slow route
 app.get("/slow", async (req, res) => {
-  await new Promise(resolve => setTimeout(resolve, 5000));
+
+  //track when the slow route is triggered
+  client.trackEvent({
+  name: "SlowRouteTriggered",
+  properties: {
+    route: "/slow",
+    environment: "demo"
+  }
+});
+  
+//track how much time it takes to process a slow request
+const start = Date.now();
+await new Promise(resolve => setTimeout(resolve, 5000));
+const duration = Date.now() - start;
+
+client.trackMetric({
+  name: "CustomProcessingTime",
+  value: duration
+});
+
+
   res.send("Slow response completed ⏳");
 });
 
