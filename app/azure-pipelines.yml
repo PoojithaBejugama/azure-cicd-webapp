@@ -31,8 +31,7 @@ steps:                   # Start of the steps list (pipeline actions happen top-
     # This tells it WHICH App Service to deploy to.
     appName: 'project1Webapp'
     # ^ This is the name of the Azure Web App resource (App Service) you created in Azure.
-    #   Example: "project1-poojitha-webapp"
-    #   If you type the wrong name, deployment fails because it can't find the target.
+
 
     # This tells it WHAT files to deploy.
     package: '$(System.DefaultWorkingDirectory)'
