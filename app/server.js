@@ -57,7 +57,6 @@ client.trackMetric({
   value: duration
 });
 
-
   res.send("Slow response completed ⏳");
 });
 

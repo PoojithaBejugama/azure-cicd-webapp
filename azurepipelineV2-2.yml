@@ -1,0 +1,63 @@
+#this version installs tools using script because soemtimes self hosted agents have trouble.
+trigger:
+- main
+
+# Use your self-hosted agent pool
+pool:
+  name: 'SelfHosted'  # <-- replace with YOUR agent pool name
+
+steps:
+- checkout: self
+
+# -----------------------------
+# STEP 1: Terraform init/apply
+# -----------------------------
+- script: |
+    set -e
+    cd infra
+    terraform version
+    terraform init
+    terraform plan
+    terraform apply -auto-approve
+  displayName: "Terraform Apply (create infra)"
+
+# -----------------------------
+# STEP 2: Install app deps
+# -----------------------------
+- script: |
+    set -e
+    cd app
+    node -v
+    npm -v
+    npm ci
+  displayName: "Install Node dependencies"
+
+# -----------------------------
+# STEP 3: Zip the app for deployment
+# -----------------------------
+- script: |
+    set -e
+    cd app
+    zip -r app.zip . -x "node_modules/*"
+  displayName: "Package app.zip"
+
+# -----------------------------
+# STEP 4: Deploy using Azure CLI (works great on self-hosted)
+# -----------------------------
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: 'YOUR_SERVICE_CONNECTION_NAME' # service connection name
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      set -e
+
+      # IMPORTANT: This must match the name you set in Terraform
+      WEBAPP_NAME="webapp-devops-demo"
+      RG_NAME="rg-devops-demo"
+
+      az webapp deployment source config-zip \
+        --resource-group "$RG_NAME" \
+        --name "$WEBAPP_NAME" \
+        --src "$(System.DefaultWorkingDirectory)/app/app.zip"
+  displayName: "Deploy zip to App Service"

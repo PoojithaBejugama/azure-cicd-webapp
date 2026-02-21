@@ -1,0 +1,40 @@
+# This section controls WHEN the pipeline runs automatically.
+trigger:                 # "trigger" = automatic run rules (CI trigger).
+- main                   # Run the pipeline whenever code is pushed to the "main" branch.
+
+# This section chooses WHERE the pipeline runs (what machine executes the steps).
+pool:                    # "pool" = the build agent pool to run your pipeline on.
+  name: 'default'  # Use a fresh Microsoft-hosted Ubuntu VM (new clean machine each run).
+
+# "steps" is the list of actions the agent will perform in order.
+steps:                   # Start of the steps list (pipeline actions happen top-to-bottom).
+
+#this step installs dependencies before starting the web application
+- task: NodeTool@0 #uses node tool to tun the npm command
+  inputs:
+    versionSpec: '18.x'
+
+- script: |
+    npm install
+  displayName: 'Install dependencies'
+
+# This step deploys your files to Azure App Service.
+- task: AzureWebApp@1    # Use the built-in Azure DevOps task "AzureWebApp" version 1 for App Service deployments.
+  inputs:                # "inputs" are the settings/parameters that this task needs.
+
+    # This tells Azure DevOps WHICH Azure account/subscription to use.
+    azureSubscription: 'New_project1_servConn'
+    # ^ This must match the EXACT name of your Service Connection in Azure DevOps.
+    #   A "Service Connection" is a saved login/link between Azure DevOps and your Azure subscription.
+    #   Without it, Azure DevOps has no permission to deploy.
+
+    # This tells it WHICH App Service to deploy to.
+    appName: 'project1Webapp'
+    # ^ This is the name of the Azure Web App resource (App Service) you created in Azure.
+
+
+    # This tells it WHAT files to deploy.
+    package: '$(System.DefaultWorkingDirectory)'
+    # ^ $(System.DefaultWorkingDirectory) is a built-in Azure DevOps variable.
+    #   It points to the folder where Azure DevOps checked out your repo on the build agent.
+    #   In simple words: "deploy everything in my repository folder".

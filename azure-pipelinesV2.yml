@@ -1,0 +1,56 @@
+# Trigger pipeline when code is pushed to main branch
+trigger:
+- main
+
+# Use Microsoft-hosted Ubuntu agent
+pool:
+  name: 'default'
+
+steps:
+
+# -----------------------------
+# STEP 1: Install Terraform
+# -----------------------------
+- task: TerraformInstaller@1
+  inputs:
+    terraformVersion: 'latest'
+
+# -----------------------------
+# STEP 2: Run Terraform
+# -----------------------------
+- script: |
+    cd infra
+    
+    # Initialize Terraform (downloads providers)
+    terraform init
+    
+    # Show what will be created
+    terraform plan
+    
+    # Create infrastructure automatically
+    terraform apply -auto-approve
+  displayName: "Terraform Apply"
+
+# -----------------------------
+# STEP 3: Install Node & Build
+# -----------------------------
+- task: NodeTool@0
+  inputs:
+    versionSpec: '18.x'
+  displayName: "Install Node"
+
+- script: |
+    cd app
+    npm install
+  displayName: "Install App Dependencies"
+
+# -----------------------------
+# STEP 4: Deploy to App Service
+# -----------------------------
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'New_project1_servConn'  #YOUR_SERVICE_CONNECTION_NAME
+    appType: 'webAppLinux'
+    appName: 'webapp-devops-demo' # Must match TF name (or make static)
+    package: 'app'
+  displayName: "Deploy App"
