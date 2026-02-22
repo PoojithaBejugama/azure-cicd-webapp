@@ -9,27 +9,54 @@ pool:
 steps:
 
 # -----------------------------
-# STEP 1: Install Terraform
+# STEP 1: Install Terraform (script install, no Marketplace task)
 # -----------------------------
-- task: TerraformInstaller@1
-  inputs:
-    terraformVersion: 'latest'
+- script: |
+    set -e
+
+    # Pin a stable terraform version (better than "latest" for reproducibility)
+    TF_VERSION="1.8.5"
+
+    echo "Downloading Terraform v${TF_VERSION}..."
+    curl -sSL -o /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+
+    echo "Unzipping Terraform..."
+    unzip -o /tmp/terraform.zip -d /tmp
+
+    echo "Installing Terraform..."
+    chmod +x /tmp/terraform
+
+    # Put terraform somewhere on PATH.
+    # On most self-hosted Linux agents, sudo works:
+    if command -v sudo >/dev/null 2>&1; then
+      sudo mv /tmp/terraform /usr/local/bin/terraform
+    else
+      # If sudo isn't available, install into the pipeline workspace and add to PATH
+      mkdir -p "$(Pipeline.Workspace)/tools"
+      mv /tmp/terraform "$(Pipeline.Workspace)/tools/terraform"
+      echo "##vso[task.prependpath]$(Pipeline.Workspace)/tools"
+    fi
+
+    terraform version
+  displayName: "Install Terraform via script"
 
 # -----------------------------
 # STEP 2: Run Terraform
 # -----------------------------
 - script: |
+    set -e
     cd infra
-    
+
     # Initialize Terraform (downloads providers)
     terraform init
-    
+
     # Show what will be created
     terraform plan
-    
+
     # Create infrastructure automatically
     terraform apply -auto-approve
   displayName: "Terraform Apply"
+
 
 # -----------------------------
 # STEP 3: Install Node & Build
@@ -50,7 +77,7 @@ steps:
 - task: AzureWebApp@1
   inputs:
     azureSubscription: 'New_project1_servConn'  #YOUR_SERVICE_CONNECTION_NAME
-    appType: 'webAppLinux'
+    appType: 'webAppLinux' 
     appName: 'webapp-devops-demo' # Must match TF name (or make static)
     package: 'app'
   displayName: "Deploy App"
