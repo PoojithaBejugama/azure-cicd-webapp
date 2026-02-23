@@ -7,14 +7,13 @@ pool:
   name: 'default'
 
 steps:
+- checkout: self
 
 # -----------------------------
-# STEP 1: Install Terraform (script install, no Marketplace task)
+# STEP 1: Install Terraform (script install; no Marketplace task)
 # -----------------------------
 - script: |
     set -e
-
-    # Pin a stable terraform version (better than "latest" for reproducibility)
     TF_VERSION="1.8.5"
 
     echo "Downloading Terraform v${TF_VERSION}..."
@@ -22,40 +21,46 @@ steps:
 
     echo "Unzipping Terraform..."
     unzip -o /tmp/terraform.zip -d /tmp
-
-    echo "Installing Terraform..."
     chmod +x /tmp/terraform
 
-    # Put terraform somewhere on PATH.
-    # On most self-hosted Linux agents, sudo works:
+    # Put terraform on PATH
     if command -v sudo >/dev/null 2>&1; then
       sudo mv /tmp/terraform /usr/local/bin/terraform
     else
-      # If sudo isn't available, install into the pipeline workspace and add to PATH
       mkdir -p "$(Pipeline.Workspace)/tools"
       mv /tmp/terraform "$(Pipeline.Workspace)/tools/terraform"
       echo "##vso[task.prependpath]$(Pipeline.Workspace)/tools"
     fi
 
     terraform version
-  displayName: "Install Terraform via script"
+  displayName: "Install Terraform"
 
 # -----------------------------
-# STEP 2: Run Terraform
+# STEP 2: Terraform Apply (AUTH via Service Connection)
 # -----------------------------
-- script: |
-    set -e
-    cd infra
+# AzureCLI@2 logs in using your service connection.
+# addSpnToEnvironment exposes SP credentials so Terraform can use ARM_* variables.
+- task: AzureCLI@2
+  displayName: "Terraform Apply (using Service Connection)"
+  inputs:
+    azureSubscription: 'New_project1_servConn'
+    scriptType: bash
+    scriptLocation: inlineScript
+    addSpnToEnvironment: true
+    inlineScript: |
+      set -e
 
-    # Initialize Terraform (downloads providers)
-    terraform init
+      # Bridge the service connection creds into Terraform’s expected env vars
+      export ARM_CLIENT_ID="$servicePrincipalId"
+      export ARM_CLIENT_SECRET="$servicePrincipalKey"
+      export ARM_TENANT_ID="$tenantId"
+      export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
 
-    # Show what will be created
-    terraform plan
-
-    # Create infrastructure automatically
-    terraform apply -auto-approve
-  displayName: "Terraform Apply"
+      cd infra
+      terraform init
+      terraform validate
+      terraform plan
+      terraform apply -auto-approve
 
 
 # -----------------------------
