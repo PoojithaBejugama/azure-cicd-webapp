@@ -84,6 +84,6 @@ steps:
   inputs:
     azureSubscription: 'New_project1_servConn'  #YOUR_SERVICE_CONNECTION_NAME
     appType: 'webAppLinux' 
-    appName: 'webapp-devops-demo' # Must match TF name (or make static)
+    appName: 'webapp-pooja-devops-demo' # Must match TF name (or make static)
     package: 'app'
   displayName: "Deploy App"

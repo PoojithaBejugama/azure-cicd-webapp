@@ -38,7 +38,7 @@ resource "azurerm_application_insights" "ai" {
 # WEB APP (Node)
 # ---------------------------
 resource "azurerm_linux_web_app" "webapp" {
-  name                = "webapp-devops-demo-${random_string.suffix.result}"
+  name                = "webapp-pooja-devops-demo"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.plan.id
@@ -67,4 +67,12 @@ resource "random_string" "suffix" {
 # ---------------------------
 output "webapp_url" {
   value = azurerm_linux_web_app.webapp.default_hostname
+}
+
+output "webapp_name" {
+  value = azurerm_linux_web_app.webapp.name
+}
+
+output "rg_name" {
+  value = azurerm_resource_group.rg.name
 }
