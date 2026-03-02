@@ -21,13 +21,17 @@ const client = appInsights.defaultClient;
 
 
 const express = require("express");
+const path = require("path");
 const app = express();
 
 const PORT = process.env.PORT || 8080;
 
-// Normal route
+// Serve static files
+app.use(express.static(__dirname));
+
+// Normal route - serve HTML file
 app.get("/", (req, res) => {
-  res.send("App is running normally 🚀");
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 // Error simulation route

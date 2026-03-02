@@ -1,1 +1,370 @@
-<h1>Project 1 - CI/CD Working</h1><p>Version 1</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express.js Route Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .routes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .route-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .route-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .route-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+        
+        .route-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-normal {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-normal:hover {
+            background: #218838;
+        }
+        
+        .btn-slow {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .btn-slow:hover {
+            background: #e0a800;
+        }
+        
+        .btn-error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-error:hover {
+            background: #c82333;
+        }
+        
+        .btn-load {
+            background: #fd7e14;
+            color: white;
+        }
+        
+        .btn-load:hover {
+            background: #e96b00;
+        }
+        
+        .response-section {
+            margin-top: 30px;
+        }
+        
+        .response-header {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .response-box {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .response-box.success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .response-box.error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .response-box.loading {
+            border-color: #667eea;
+            background: #e7f1ff;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .status-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-loading {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Express.js Route Tester</h1>
+        <p class="subtitle">Test all your application routes from one screen</p>
+        
+        <div class="routes-grid">
+            <div class="route-card">
+                <div class="route-title">🏠 Home Route</div>
+                <div class="route-description">Tests the normal / endpoint. Should return a success message.</div>
+                <button class="btn-normal" onclick="testRoute('/', 'GET')">Test Normal Route</button>
+            </div>
+            
+            <div class="route-card">
+                <div class="route-title">⏳ Slow Route</div>
+                <div class="route-description">Tests the /slow endpoint. Takes ~5 seconds to respond.</div>
+                <button class="btn-slow" onclick="testRoute('/slow', 'GET')">Test Slow Route</button>
+            </div>
+            
+            <div class="route-card">
+                <div class="route-title">❌ Error Route</div>
+                <div class="route-description">Tests the /error endpoint. Triggers a simulated error.</div>
+                <button class="btn-error" onclick="testRoute('/error', 'GET')">Test Error Route</button>
+            </div>
+            
+            <div class="route-card">
+                <div class="route-title">🔥 CPU Load Route</div>
+                <div class="route-description">Tests the /load endpoint. Simulates heavy CPU usage.</div>
+                <button class="btn-load" onclick="testRoute('/load', 'GET')">Test Load Route</button>
+            </div>
+        </div>
+        
+        <div class="response-section">
+            <div class="response-header">Response:</div>
+            <div id="response" class="response-box">
+                Click any button above to test a route...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLoading = false;
+
+        async function testRoute(route, method = 'GET') {
+            if (isLoading) {
+                alert('Please wait for the current request to complete!');
+                return;
+            }
+
+            const responseBox = document.getElementById('response');
+            const buttons = document.querySelectorAll('button');
+            
+            // Disable all buttons during request
+            buttons.forEach(btn => btn.disabled = true);
+            isLoading = true;
+            
+            // Show loading state
+            responseBox.className = 'response-box loading';
+            responseBox.innerHTML = `<span class="status-badge status-loading">LOADING</span>\n<div class="loading-spinner"></div> Sending ${method} request to ${route}...\nStarted at: ${new Date().toLocaleTimeString()}`;
+            
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch(route, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                let responseText;
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    responseText = JSON.stringify(data, null, 2);
+                } else {
+                    responseText = await response.text();
+                }
+                
+                if (response.ok) {
+                    responseBox.className = 'response-box success';
+                    responseBox.innerHTML = `<span class="status-badge status-success">SUCCESS - ${response.status}</span>\n\n` +
+                        `Route: ${route}\n` +
+                        `Method: ${method}\n` +
+                        `Status: ${response.status} ${response.statusText}\n` +
+                        `Duration: ${duration}ms\n` +
+                        `Completed at: ${new Date().toLocaleTimeString()}\n\n` +
+                        `Response:\n${responseText}`;
+                } else {
+                    responseBox.className = 'response-box error';
+                    responseBox.innerHTML = `<span class="status-badge status-error">ERROR - ${response.status}</span>\n\n` +
+                        `Route: ${route}\n` +
+                        `Method: ${method}\n` +
+                        `Status: ${response.status} ${response.statusText}\n` +
+                        `Duration: ${duration}ms\n` +
+                        `Completed at: ${new Date().toLocaleTimeString()}\n\n` +
+                        `Response:\n${responseText}`;
+                }
+            } catch (error) {
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                responseBox.className = 'response-box error';
+                responseBox.innerHTML = `<span class="status-badge status-error">NETWORK ERROR</span>\n\n` +
+                    `Route: ${route}\n` +
+                    `Method: ${method}\n` +
+                    `Duration: ${duration}ms\n` +
+                    `Completed at: ${new Date().toLocaleTimeString()}\n\n` +
+                    `Error:\n${error.message}\n\n` +
+                    `This might be a CORS issue or the server might be down.`;
+            } finally {
+                // Re-enable all buttons
+                buttons.forEach(btn => btn.disabled = false);
+                isLoading = false;
+            }
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (isLoading) return;
+            
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case '1':
+                        e.preventDefault();
+                        testRoute('/', 'GET');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        testRoute('/slow', 'GET');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        testRoute('/error', 'GET');
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        testRoute('/load', 'GET');
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
