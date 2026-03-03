@@ -1,0 +1,63 @@
+# Trigger pipeline when code is pushed to main branch
+trigger:
+- main
+
+# Use Microsoft-hosted Ubuntu agent
+pool:
+  vmImage: 'ubuntu-latest'
+  
+stages:
+  -stage: 
+steps:
+- checkout: self
+
+#Step 1 Install terraform(microsoft hosted so not needed here)
+
+stages:
+
+# 1) Terraform Plan
+- stage: Terraform_Plan
+  jobs:
+  - job: plan
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - script: echo "terraform plan"
+
+# 2) Terraform Apply
+- stage: Terraform_Apply
+  dependsOn: Terraform_Plan
+  jobs:
+  - deployment: apply
+    environment: dev
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - script: echo "terraform apply"
+
+# 3) Build App
+- stage: Build_App
+  dependsOn: Terraform_Apply
+  jobs:
+  - job: build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - script: echo "npm build"
+
+# 4) Deploy App
+- stage: Deploy_App
+  dependsOn: Build_App
+  jobs:
+  - deployment: deploy
+    environment: dev
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - script: echo "deploy app"
