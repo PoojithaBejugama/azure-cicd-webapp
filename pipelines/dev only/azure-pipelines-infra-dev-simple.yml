@@ -118,7 +118,7 @@ stages:
     jobs:
       - deployment: ApplyDev
         displayName: 'Deploy to Dev'
-        # environment: 'infra-dev'  # Uncomment to add approval checks
+        environment: 'dev'  # Uncomment to add approval checks
         strategy:
           runOnce:
             deploy:
