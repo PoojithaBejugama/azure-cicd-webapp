@@ -93,7 +93,7 @@ stages:
     jobs:
       - deployment: DeployTodev
         displayName: 'Deploy App to Dev'
-        # environment: 'dev'  # Uncomment to add approval checks
+        environment: 'dev'  # Uncomment to add approval checks
         strategy:
           runOnce:
             deploy:
