@@ -1,0 +1,363 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infra/**
+    exclude:
+      - infra/README.md
+      - infra/*.md
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infra/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  terraformVersion: '1.5.0'
+  azureServiceConnection: 'New_project1_servConn'
+
+stages:
+  # ============================================
+  # VALIDATE STAGE
+  # ============================================
+  - stage: Validate
+    displayName: 'Validate Terraform'
+    jobs:
+      - job: ValidateTerraform
+        displayName: 'Validate Terraform Configuration'
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform $(terraformVersion)'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - script: |
+              cd infra
+              terraform init -backend=false
+            displayName: 'Terraform Init (Backend Disabled)'
+            continueOnError: false
+
+          - script: |
+              cd infra
+              terraform validate
+            displayName: 'Terraform Validate'
+            continueOnError: false
+
+          - script: |
+              cd infra
+              terraform fmt -check -recursive
+            displayName: 'Terraform Format Check'
+            continueOnError: true
+
+  # ============================================
+  # PLAN STAGE (All Environments)
+  # ============================================
+  - stage: Plan
+    displayName: 'Plan Terraform'
+    dependsOn: Validate
+    condition: succeeded()
+    jobs:
+      - job: PlanDev
+        displayName: 'Plan for Dev'
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init - Dev'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/dev
+                terraform init -upgrade
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Plan - Dev'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/dev
+                terraform plan -out=tfplan
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Dev Plan'
+            inputs:
+              targetPath: 'infra/env/dev/tfplan'
+              artifact: 'tfplan-dev'
+
+      - job: PlanStaging
+        displayName: 'Plan for Staging'
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init - Staging'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/staging
+                terraform init -upgrade
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Plan - Staging'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/staging
+                terraform plan -out=tfplan
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Staging Plan'
+            inputs:
+              targetPath: 'infra/env/staging/tfplan'
+              artifact: 'tfplan-staging'
+
+      - job: PlanProd
+        displayName: 'Plan for Prod'
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init - Prod'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/prod
+                terraform init -upgrade
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Plan - Prod'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/prod
+                terraform plan -out=tfplan
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Prod Plan'
+            inputs:
+              targetPath: 'infra/env/prod/tfplan'
+              artifact: 'tfplan-prod'
+
+  # ============================================
+  # APPLY DEV STAGE (Automatic)
+  # ============================================
+  - stage: ApplyDev
+    displayName: 'Apply Dev'
+    dependsOn: Plan
+    condition: succeeded()
+    jobs:
+      - deployment: DeployDevInfra
+        displayName: 'Apply Terraform - Dev'
+        environment: 'infra-dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@0
+                  displayName: 'Install Terraform'
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                - download: current
+                  artifact: 'tfplan-dev'
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Apply - Dev'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/dev
+                      terraform init
+                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-dev/tfplan
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Output - Dev'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/dev
+                      echo "=== Dev Environment Resources ==="
+                      terraform output
+
+  # ============================================
+  # STAGING STAGE (Manual Approval)
+  # ============================================
+  - stage: ApplyStaging
+    displayName: 'Apply Staging'
+    dependsOn: ApplyDev
+    condition: succeeded()
+    jobs:
+      - deployment: DeployStagingInfra
+        displayName: 'Apply Terraform - Staging'
+        environment: 'infra-staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@0
+                  displayName: 'Install Terraform'
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                - download: current
+                  artifact: 'tfplan-staging'
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Apply - Staging'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/staging
+                      terraform init
+                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-staging/tfplan
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Output - Staging'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/staging
+                      echo "=== Staging Environment Resources ==="
+                      terraform output
+
+  # ============================================
+  # PRODUCTION STAGE (Manual Approval)
+  # ============================================
+  - stage: ApplyProd
+    displayName: 'Apply Production'
+    dependsOn: ApplyStaging
+    condition: succeeded()
+    jobs:
+      - deployment: DeployProdInfra
+        displayName: 'Apply Terraform - Production'
+        environment: 'infra-prod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@0
+                  displayName: 'Install Terraform'
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                - download: current
+                  artifact: 'tfplan-prod'
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Apply - Production'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/prod
+                      terraform init
+                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-prod/tfplan
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Output - Production'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/prod
+                      echo "=== Production Environment Resources ==="
+                      terraform output
+
+  # ============================================
+  # DESTROY STAGE (Manual Trigger - Non-Prod Only)
+  # ============================================
+  - stage: DestroyNonProd
+    displayName: 'Destroy Non-Prod (Manual)'
+    dependsOn: Plan
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
+    jobs:
+      - job: DestroyDev
+        displayName: 'Destroy Dev Infrastructure'
+        pool: ubuntu-latest
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Destroy - Dev'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/dev
+                terraform init
+                terraform destroy -auto-approve
+
+      - job: DestroyStaging
+        displayName: 'Destroy Staging Infrastructure'
+        dependsOn: DestroyDev
+        condition: succeeded()
+        pool: ubuntu-latest
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Destroy - Staging'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/staging
+                terraform init
+                terraform destroy -auto-approve
+
+          - script: |
+              echo "✓ Non-production infrastructure destroyed"
+            displayName: 'Confirmation'

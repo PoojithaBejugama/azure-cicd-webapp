@@ -1,0 +1,163 @@
+# ============================================
+# INFRASTRUCTURE PIPELINE - DEVELOPMENT ONLY
+# ============================================
+# This pipeline deploys Azure infrastructure using Terraform
+# Simplified version for learning - dev environment only
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - infra/**
+
+# Which machine to run on
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Variables used throughout the pipeline
+variables:
+  terraformVersion: '1.5.0'
+  azureServiceConnection: 'New_project1_servConn'
+  environment: 'dev'
+
+stages:
+  # ============================================
+  # STAGE 1: VALIDATE
+  # ============================================
+  # Check if Terraform code is valid (syntax, formatting, etc)
+  - stage: Validate
+    displayName: 'Validate Terraform Code'
+    jobs:
+      - job: ValidateTerraform
+        displayName: 'Check Terraform Configuration'
+        steps:
+          # Download and install Terraform
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform $(terraformVersion)'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # Initialize Terraform (without backend to just check syntax)
+          - script: |
+              cd infra
+              terraform init -backend=false
+            displayName: 'Initialize Terraform'
+
+          # Validate the configuration files
+          - script: |
+              cd infra
+              terraform validate
+            displayName: 'Validate Terraform Syntax'
+
+          # Check code formatting (HCL style)
+          - script: |
+              cd infra
+              terraform fmt -check -recursive
+            displayName: 'Check Code Format'
+            continueOnError: true  # Don't fail if formatting is off
+
+  # ============================================
+  # STAGE 2: PLAN
+  # ============================================
+  # Create a plan showing what changes will be made
+  - stage: Plan
+    displayName: 'Plan Infrastructure Changes'
+    dependsOn: Validate
+    condition: succeeded()  # Only run if validation passed
+    jobs:
+      - job: PlanDev
+        displayName: 'Plan for Dev Environment'
+        steps:
+          # Install Terraform
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # Initialize Terraform with Azure connection
+          - task: AzureCLI@2
+            displayName: 'Initialize Terraform for Dev'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/dev
+                # Download required providers and modules
+                terraform init -upgrade
+
+          # Create a plan (what will change)
+          - task: AzureCLI@2
+            displayName: 'Create Plan for Dev'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                cd infra/env/dev
+                # Create plan file showing all changes
+                terraform plan -out=tfplan
+
+          # Save the plan so we can use it in the Apply stage
+          - task: PublishPipelineArtifact@1
+            displayName: 'Save Plan as Artifact'
+            inputs:
+              targetPath: 'infra/env/dev/tfplan'
+              artifact: 'tfplan-dev'
+
+  # ============================================
+  # STAGE 3: APPLY
+  # ============================================
+  # Actually create/update the Azure resources
+  - stage: Apply
+    displayName: 'Apply Infrastructure Changes'
+    dependsOn: Plan
+    condition: succeeded()  # Only run if plan succeeded
+    jobs:
+      - deployment: ApplyDev
+        displayName: 'Deploy to Dev'
+        # environment: 'infra-dev'  # Uncomment to add approval checks
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Get the latest code
+                - checkout: self
+
+                # Install Terraform
+                - task: TerraformInstaller@0
+                  displayName: 'Install Terraform'
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                # Download the plan we created in the Plan stage
+                - download: current
+                  artifact: 'tfplan-dev'
+
+                # Apply the changes to Azure
+                - task: AzureCLI@2
+                  displayName: 'Apply Terraform Plan'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/dev
+                      # Initialize (downloads modules)
+                      terraform init
+                      # Apply the plan we created earlier
+                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-dev/tfplan
+
+                # Show what was created/changed
+                - task: AzureCLI@2
+                  displayName: 'Show Created Resources'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      cd infra/env/dev
+                      echo "✓ Resources created/updated:"
+                      terraform output

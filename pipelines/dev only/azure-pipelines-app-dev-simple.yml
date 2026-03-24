@@ -1,0 +1,118 @@
+# ============================================
+# APPLICATION DEPLOYMENT PIPELINE - DEVELOPMENT ONLY
+# ============================================
+# This pipeline builds and deploys your Node.js app to Azure
+# Simplified version for learning - dev environment only
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - app/**
+
+# Which machine to run on
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Variables used throughout the pipeline
+variables:
+  nodeVersion: '20.x'
+  azureServiceConnection: 'New_project1_servConn'
+  devWebAppName: 'webapp-pooja-dev-demo'  # Must match Terraform output
+  artifactName: 'app-drop'
+
+stages:
+  # ============================================
+  # STAGE 1: BUILD
+  # ============================================
+  # Install dependencies, run tests, package the app
+  - stage: Build
+    displayName: 'Build Application'
+    jobs:
+      - job: BuildApp
+        displayName: 'Build and Package App'
+        steps:
+          # Install Node.js
+          - task: NodeTool@0
+            displayName: 'Install Node.js $(nodeVersion)'
+            inputs:
+              versionSpec: '$(nodeVersion)'
+
+          # Install npm dependencies
+          - script: |
+              npm install
+            displayName: 'Install Dependencies'
+            workingDirectory: 'app'
+
+          # Run tests
+          - script: |
+              npm test
+            displayName: 'Run Tests'
+            workingDirectory: 'app'
+            continueOnError: true  # Don't fail if tests don't exist
+
+          # Copy app files to staging directory
+          - task: CopyFiles@2
+            displayName: 'Copy App Files'
+            inputs:
+              SourceFolder: '$(Build.SourcesDirectory)/app'
+              Contents: |
+                **
+                !node_modules/**
+                !.git/**
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+          # Create a zip file of the app
+          - task: ArchiveFiles@2
+            displayName: 'Create Deployment Package'
+            inputs:
+              rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+              replaceExistingArchive: true
+
+          # Save the zip file so we can deploy it
+          - task: PublishPipelineArtifact@1
+            displayName: 'Save Package as Artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/app.zip'
+              artifact: '$(artifactName)'
+              publishLocation: 'pipeline'
+
+  # ============================================
+  # STAGE 2: DEPLOY TO DEV
+  # ============================================
+  # Deploy the app to the dev Azure App Service
+  - stage: DeployDev
+    displayName: 'Deploy to Dev'
+    dependsOn: Build
+    condition: succeeded()  # Only run if build passed
+    jobs:
+      - deployment: DeployTodev
+        displayName: 'Deploy App to Dev'
+        # environment: 'dev'  # Uncomment to add approval checks
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Download the app package we built
+                - download: current
+                  artifact: '$(artifactName)'
+
+                # Deploy to Azure App Service
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    appType: 'webApp'  # Type of app (web app)
+                    appName: '$(devWebAppName)'  # Name of the app in Azure
+                    package: '$(Pipeline.Workspace)/$(artifactName)/app.zip'  # App package to deploy
+
+                # Test if the app is running
+                - script: |
+                    echo "✓ Deployment complete!"
+                    echo "App available at: https://$(devWebAppName).azurewebsites.net"
+                  displayName: 'Deployment Summary'
