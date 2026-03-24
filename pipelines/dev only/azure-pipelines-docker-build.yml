@@ -10,7 +10,7 @@ trigger:
       - main
   paths:
     include:
-      - app/**  # Trigger on app code changes
+      #- app/**  # Trigger on app code changes
       - app/dockerfile  # Trigger on Dockerfile changes
 
 # Which machine to run on
