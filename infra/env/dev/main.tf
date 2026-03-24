@@ -56,11 +56,11 @@ module "app_service" {
   node_version        = var.node_version
 
   # Pass Application Insights connection string to web app
-  app_settings = {
-    APPLICATIONINSIGHTS_CONNECTION_STRING = module.application_insights.connection_string
-  }
+  #app_settings = {
+  #  APPLICATIONINSIGHTS_CONNECTION_STRING = module.application_insights.connection_string
+ # }
 
-  common_tags = local.common_tags
+  #common_tags = local.common_tags
 
   # Explicit dependency to ensure RG is created first
   depends_on = [module.resource_group]

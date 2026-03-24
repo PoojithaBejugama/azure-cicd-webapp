@@ -45,11 +45,5 @@ module "app_service" {
   sku_name            = var.app_service_sku
   node_version        = var.node_version
 
-  app_settings = {
-    APPLICATIONINSIGHTS_CONNECTION_STRING = module.application_insights.connection_string
-  }
-
-  common_tags = local.common_tags
-
   depends_on = [module.resource_group]
 }

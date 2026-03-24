@@ -10,12 +10,12 @@ variables:
   nodeVersion: '20.x'
 
   # Azure service connection name in Azure DevOps
-  azureServiceConnection: 'YOUR-AZURE-SERVICE-CONNECTION'
+  azureServiceConnection: 'New_project1_servConn'
 
   # App Service names
-  devWebAppName: 'your-dev-webapp-name'
-  stagingWebAppName: 'your-staging-webapp-name'
-  prodWebAppName: 'your-prod-webapp-name'
+  devWebAppName: 'webapp-pooja-dev-demo'
+  stagingWebAppName: 'webapp-pooja-staging-demo'
+  prodWebAppName: 'webapp-pooja-prod-demo'
 
   # Artifact name
   artifactName: 'drop'
