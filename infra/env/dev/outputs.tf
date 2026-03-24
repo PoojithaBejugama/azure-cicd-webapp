@@ -26,3 +26,20 @@ output "application_insights_name" {
   description = "Name of Application Insights instance"
   value       = module.application_insights.app_insights_name
 }
+
+output "acr_login_server" {
+  description = "Login server for the Azure Container Registry"
+  value       = module.container_registry.login_server
+}
+
+output "acr_admin_username" {
+  description = "Admin username for ACR"
+  value       = module.container_registry.admin_username
+  sensitive   = true
+}
+
+output "acr_admin_password" {
+  description = "Admin password for ACR"
+  value       = module.container_registry.admin_password
+  sensitive   = true
+}

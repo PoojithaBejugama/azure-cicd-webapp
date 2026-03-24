@@ -65,3 +65,21 @@ module "app_service" {
   # Explicit dependency to ensure RG is created first
   depends_on = [module.resource_group]
 }
+
+# ============================================
+# CONTAINER REGISTRY MODULE
+# ============================================
+module "container_registry" {
+  source = "../../modules/container_registry"
+
+  registry_name     = "myacrpoojademo"
+  resource_group_name = module.resource_group.resource_group_name
+  location          = var.location
+  sku               = "Basic"
+  admin_enabled     = true
+
+  common_tags = local.common_tags
+
+  # Explicit dependency to ensure RG is created first
+  depends_on = [module.resource_group]
+}
