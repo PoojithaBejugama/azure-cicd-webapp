@@ -107,7 +107,7 @@ stages:
                   displayName: 'Deploy to Azure App Service'
                   inputs:
                     azureSubscription: '$(azureServiceConnection)'
-                    appType: 'webApp'  # Type of app (web app)
+                    appType: 'webAppLinux'  # Terraform creates a Linux App Service
                     appName: '$(devWebAppName)'  # Name of the app in Azure
                     package: '$(Pipeline.Workspace)/$(artifactName)/app.zip'  # App package to deploy
 
