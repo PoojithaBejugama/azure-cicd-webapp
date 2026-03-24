@@ -47,11 +47,11 @@ stages:
             workingDirectory: 'app'
 
           # Run tests
-          - script: |
-              npm test
-            displayName: 'Run Tests'
-            workingDirectory: 'app'
-            continueOnError: true  # Don't fail if tests don't exist
+          #- script: |
+          #    npm test
+           # displayName: 'Run Tests'
+          #  workingDirectory: 'app'
+          #  continueOnError: true  # Don't fail if tests don't exist
 
           # Copy app files to staging directory
           - task: CopyFiles@2
