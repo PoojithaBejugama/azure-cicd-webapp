@@ -33,20 +33,15 @@ stages:
       - job: DockerBuild
         displayName: 'Build and Push to ACR'
         steps:
-          # Login to Azure (needed for ACR access)
+          # Login to ACR using the Azure service connection context
           - task: AzureCLI@2
-            displayName: 'Azure Login'
+            displayName: 'Login to ACR'
             inputs:
               azureSubscription: '$(azureServiceConnection)'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                echo "Logged in to Azure"
-
-          # Login to ACR
-          - script: |
-              az acr login --name $(acrName)
-            displayName: 'Login to ACR'
+                az acr login --name $(acrName)
 
           # Build Docker image with ACR tags
           - script: |

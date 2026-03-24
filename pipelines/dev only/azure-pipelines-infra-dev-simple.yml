@@ -51,12 +51,6 @@ stages:
               terraform validate
             displayName: 'Validate Terraform Syntax'
 
-          # Check code formatting (HCL style)
-          - script: |
-              cd infra
-              terraform fmt -check -recursive
-            displayName: 'Check Code Format'
-            continueOnError: true  # Don't fail if formatting is off
 
   # ============================================
   # STAGE 2: PLAN
