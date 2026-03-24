@@ -1,27 +1,27 @@
-# Tell Terraform we are using Azure
-provider "azurerm" {
-  features {}
-}
+
 
 # ---------------------------
 # RESOURCE GROUP
 # ---------------------------
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-devops-newProject-demo"
-  location = "Canada Central"
+  name     = var.resource_group_name
+  location = var.location
 }
 
 # ---------------------------
 # APP SERVICE PLAN
 # ---------------------------
 # This defines the compute tier for the web app
-resource "azurerm_service_plan" "plan" {
-  name                = "asp-devops-demo"
+module "app_service" {
+  source = "./modules/app_service"
+
+  plan_name = "asp-${var.environment}-demo"
+  app_name            = "webapp-pooja-demo"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-
-  os_type  = "Linux"
-  sku_name = "B1"  # Cheap tier
+  sku_name            = "B1"
+  node_version        = "18-lts"
+  
 }
 
 # ---------------------------
@@ -29,7 +29,7 @@ resource "azurerm_service_plan" "plan" {
 # ---------------------------
 resource "azurerm_application_insights" "ai" {
   name                = "appi-devops-demo"
-  location            = azurerm_resource_group.rg.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
   application_type    = "web"
 }
@@ -39,7 +39,7 @@ resource "azurerm_application_insights" "ai" {
 # ---------------------------
 resource "azurerm_linux_web_app" "webapp" {
   name                = "webapp-pooja-devops-demo"
-  location            = azurerm_resource_group.rg.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
   service_plan_id     = azurerm_service_plan.plan.id
 

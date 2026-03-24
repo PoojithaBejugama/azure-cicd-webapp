@@ -12,12 +12,13 @@
 
 // app.listen(port, () => console.log(`Listening on ${port}`));
 
-//add appInsights telemetry
-const appInsights = require("applicationinsights");
-
-appInsights.setup().start();
-
-const client = appInsights.defaultClient;
+//add appInsights telemetry (optional - only if connection string exists)
+let client = null;
+if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING || process.env.APPINSIGHTS_INSTRUMENTATION_KEY) {
+  const appInsights = require("applicationinsights");
+  appInsights.setup().start();
+  client = appInsights.defaultClient;
+}
 
 
 const express = require("express");
@@ -43,23 +44,27 @@ app.get("/error", (req, res) => {
 app.get("/slow", async (req, res) => {
 
   //track when the slow route is triggered
-  client.trackEvent({
-  name: "SlowRouteTriggered",
-  properties: {
-    route: "/slow",
-    environment: "demo"
+  if (client) {
+    client.trackEvent({
+      name: "SlowRouteTriggered",
+      properties: {
+        route: "/slow",
+        environment: "demo"
+      }
+    });
   }
-});
   
-//track how much time it takes to process a slow request
-const start = Date.now();
-await new Promise(resolve => setTimeout(resolve, 5000));
-const duration = Date.now() - start;
+  //track how much time it takes to process a slow request
+  const start = Date.now();
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  const duration = Date.now() - start;
 
-client.trackMetric({
-  name: "CustomProcessingTime",
-  value: duration
-});
+  if (client) {
+    client.trackMetric({
+      name: "CustomProcessingTime",
+      value: duration
+    });
+  }
 
   res.send("Slow response completed ⏳");
 });
