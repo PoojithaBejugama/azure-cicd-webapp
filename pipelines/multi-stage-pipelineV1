@@ -1,0 +1,151 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+  # Azure service connection name in Azure DevOps
+  azureServiceConnection: 'YOUR-AZURE-SERVICE-CONNECTION'
+
+  # App Service names
+  devWebAppName: 'your-dev-webapp-name'
+  stagingWebAppName: 'your-staging-webapp-name'
+  prodWebAppName: 'your-prod-webapp-name'
+
+  # Artifact name
+  artifactName: 'drop'
+
+stages:
+  - stage: Build
+    displayName: 'Build and Test'
+    jobs:
+      - job: BuildJob
+        displayName: 'Install, test, and package app'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Use Node.js $(nodeVersion)'
+            inputs:
+              versionSpec: '$(nodeVersion)'
+
+          - script: |
+              npm install
+            displayName: 'Install dependencies'
+
+          # Replace this with your real test command if you have one
+          - script: |
+              echo "Running tests..."
+              npm test || echo "No tests configured yet"
+            displayName: 'Run tests'
+
+          # Copy app files into staging folder
+          - task: CopyFiles@2
+            displayName: 'Copy files for packaging'
+            inputs:
+              SourceFolder: '$(Build.SourcesDirectory)'
+              Contents: |
+                **
+                !.git/**
+                !node_modules/**
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+          - task: ArchiveFiles@2
+            displayName: 'Archive app files'
+            inputs:
+              rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+              replaceExistingArchive: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish pipeline artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/app.zip'
+              artifact: '$(artifactName)'
+              publishLocation: 'pipeline'
+
+  - stage: Deploy_Dev
+    displayName: 'Deploy to Dev'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: DevDeployment
+        displayName: 'Deploy app to Dev'
+        environment: 'dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: '$(artifactName)'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service - Dev'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    appType: 'webApp'
+                    appName: '$(devWebAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/app.zip'
+
+                - script: |
+                    echo "Basic validation after Dev deployment"
+                  displayName: 'Validation placeholder'
+
+  - stage: Deploy_Staging
+    displayName: 'Deploy to Staging'
+    dependsOn: Deploy_Dev
+    condition: succeeded()
+    jobs:
+      - deployment: StagingDeployment
+        displayName: 'Deploy app to Staging'
+        environment: 'staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: '$(artifactName)'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service - Staging'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    appType: 'webApp'
+                    appName: '$(stagingWebAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/app.zip'
+
+                - script: |
+                    echo "Basic validation after Staging deployment"
+                  displayName: 'Validation placeholder'
+
+  - stage: Deploy_Prod
+    displayName: 'Deploy to Production'
+    dependsOn: Deploy_Staging
+    condition: succeeded()
+    jobs:
+      - deployment: ProdDeployment
+        displayName: 'Deploy app to Production'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: '$(artifactName)'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service - Production'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    appType: 'webApp'
+                    appName: '$(prodWebAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/app.zip'
+
+                - script: |
+                    echo "Basic validation after Production deployment"
+                  displayName: 'Validation placeholder'

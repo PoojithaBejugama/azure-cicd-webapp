@@ -1,0 +1,123 @@
+# ============================================
+# TERRAFORM STATE FILES (SENSITIVE!)
+# ============================================
+*.tfstate
+*.tfstate.*
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate.lock.json
+.terraform/
+.terraform.lock.hcl
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terratest/
+
+# ============================================
+# ENVIRONMENT FILES (SECRETS!)
+# ============================================
+# NEVER commit these - they contain passwords, keys, tokens
+.env
+.env.dev
+.env.staging
+.env.prod
+.env.local
+.env.*.local
+env.sh
+env.bat
+
+# ============================================
+# AWS/AZURE CREDENTIALS
+# ============================================
+# AWS
+.aws/
+*.aws
+aws_credentials
+aws_config
+
+# Azure
+.azure/
+*.azurerc
+
+# Service Principal files
+service-principal.json
+*.json.bak
+
+# ============================================
+# IDE & EDITOR
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.vs/
+.vscode-test/
+
+# ============================================
+# SENSITIVE FILES
+# ============================================
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cert
+*.pub
+private_key
+id_rsa
+id_dsa
+*.keystore
+*.jks
+
+# ============================================
+# BUILD & LOGS
+# ============================================
+dist/
+build/
+out/
+*.log
+logs/
+crash.log
+debug/
+temp/
+tmp/
+
+# ============================================
+# OS FILES
+# ============================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# BACKUP FILES
+# ============================================
+*.bak
+*.backup
+*.old
+*.tmp
+*~
+
+# ============================================
+# COMPILED FILES
+# ============================================
+*.pyc
+*.pyo
+*.class
+*.jar
+*.o
+*.so
