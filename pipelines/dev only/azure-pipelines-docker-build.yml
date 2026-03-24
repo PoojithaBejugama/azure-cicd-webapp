@@ -1,0 +1,70 @@
+# ============================================
+# DOCKER BUILD & ACR PUSH PIPELINE
+# ============================================
+# Simple pipeline that builds Docker images and pushes to ACR
+# Does NOT deploy - just creates container images
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - app/**  # Trigger on app code changes
+      - app/dockerfile  # Trigger on Dockerfile changes
+
+# Which machine to run on
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Variables
+variables:
+  acrName: 'myacrpoojademo'  # Your ACR name
+  imageName: 'ncpl-app'       # Image name in ACR
+  azureServiceConnection: 'New_project1_servConn'
+
+stages:
+  # ============================================
+  # STAGE 1: BUILD & PUSH
+  # ============================================
+  - stage: BuildAndPush
+    displayName: 'Build and Push Docker Image'
+    jobs:
+      - job: DockerBuild
+        displayName: 'Build and Push to ACR'
+        steps:
+          # Login to Azure (needed for ACR access)
+          - task: AzureCLI@2
+            displayName: 'Azure Login'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Logged in to Azure"
+
+          # Login to ACR
+          - script: |
+              az acr login --name $(acrName)
+            displayName: 'Login to ACR'
+
+          # Build Docker image with ACR tags
+          - script: |
+              cd app
+              docker build -t $(acrName).azurecr.io/$(imageName):$(Build.BuildId) \
+                           -t $(acrName).azurecr.io/$(imageName):latest \
+                           .
+            displayName: 'Build Docker Image'
+
+          # Push both tags to ACR
+          - script: |
+              docker push $(acrName).azurecr.io/$(imageName):$(Build.BuildId)
+              docker push $(acrName).azurecr.io/$(imageName):latest
+            displayName: 'Push to ACR'
+
+          # Verify the push worked
+          - script: |
+              az acr repository list --name $(acrName) --output table
+              echo "Image pushed: $(acrName).azurecr.io/$(imageName):$(Build.BuildId)"
+              echo "Image pushed: $(acrName).azurecr.io/$(imageName):latest"
+            displayName: 'Verify Push Success'

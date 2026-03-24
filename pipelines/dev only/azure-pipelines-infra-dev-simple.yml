@@ -159,5 +159,5 @@ stages:
                     scriptLocation: 'inlineScript'
                     inlineScript: |
                       cd infra/env/dev
-                      echo "✓ Resources created/updated:"
+                      echo "Resources created/updated:"
                       terraform output
