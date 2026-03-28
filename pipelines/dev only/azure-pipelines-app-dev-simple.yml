@@ -42,8 +42,9 @@ stages:
 
           # Install npm dependencies
           - script: |
-              npm install
-            displayName: 'Install Dependencies'
+              cd app
+              npm ci
+            displayName: 'Install Dependencies on linux agent'
             workingDirectory: 'app'
 
           # Run tests
@@ -60,7 +61,6 @@ stages:
               SourceFolder: '$(Build.SourcesDirectory)/app'
               Contents: |
                 **
-                !node_modules/**
                 !.git/**
               TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
