@@ -1,22 +1,59 @@
 # This section controls WHEN the pipeline runs automatically.
 trigger:                 # "trigger" = automatic run rules (CI trigger).
 - main                   # Run the pipeline whenever code is pushed to the "main" branch.
+# Beginner note:
+# This means you do not need to start the pipeline by hand after every push to main.
 
 # This section chooses WHERE the pipeline runs (what machine executes the steps).
 pool:                    # "pool" = the build agent pool to run your pipeline on.
   name: 'default'  # Use a fresh Microsoft-hosted Ubuntu VM (new clean machine each run).
+# Beginner note:
+# Think of the agent as a temporary computer Azure DevOps uses to do your build and deploy steps.
 
 # "steps" is the list of actions the agent will perform in order.
 steps:                   # Start of the steps list (pipeline actions happen top-to-bottom).
+# Beginner note:
+# Azure DevOps runs these one by one from top to bottom.
 
 #this step installs dependencies before starting the web application
 - task: NodeTool@0 #uses node tool to tun the npm command
+  # Beginner note:
+  # This installs Node.js on the build agent so commands like npm install can work.
   inputs:
     versionSpec: '18.x'
+    # Beginner note:
+    # Use any Node 18 version that is available on the agent.
 
+# Beginner note:
+# This command reads app/package.json and installs the packages listed there.
 - script: |
     npm install
   displayName: 'Install dependencies'
+  workingDirectory: 'app'
+  # Beginner note:
+  # workingDirectory tells Azure to run npm install inside the app folder,
+  # because that is where your package.json file lives.
+
+# Beginner note:
+# This step makes a zip file containing only your web app files.
+# That is important because Azure App Service should receive the app itself,
+# not the whole repository with docs, infra, and pipeline files.
+- task: ArchiveFiles@2
+  displayName: 'Package app for deployment'
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)/app'
+    # Beginner note:
+    # $(System.DefaultWorkingDirectory) is the folder where Azure checked out your repo.
+    # Adding /app means "package only the app folder".
+    includeRootFolder: false
+    # Beginner note:
+    # false means "put the contents of app/ at the top of the zip",
+    # not an extra app/ folder inside the zip.
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+    # Beginner note:
+    # $(Build.ArtifactStagingDirectory) is a temporary folder used to store build output.
+    replaceExistingArchive: true
 
 # This step deploys your files to Azure App Service.
 - task: AzureWebApp@1    # Use the built-in Azure DevOps task "AzureWebApp" version 1 for App Service deployments.
@@ -27,14 +64,20 @@ steps:                   # Start of the steps list (pipeline actions happen top-
     # ^ This must match the EXACT name of your Service Connection in Azure DevOps.
     #   A "Service Connection" is a saved login/link between Azure DevOps and your Azure subscription.
     #   Without it, Azure DevOps has no permission to deploy.
+    # Beginner note:
+    # In simple terms, this is the saved Azure login the pipeline uses.
 
     # This tells it WHICH App Service to deploy to.
     appName: 'project1Webapp'
     # ^ This is the name of the Azure Web App resource (App Service) you created in Azure.
+    # Beginner note:
+    # This must match the exact name of the web app in the Azure portal.
 
 
     # This tells it WHAT files to deploy.
-    package: '$(System.DefaultWorkingDirectory)'
-    # ^ $(System.DefaultWorkingDirectory) is a built-in Azure DevOps variable.
-    #   It points to the folder where Azure DevOps checked out your repo on the build agent.
-    #   In simple words: "deploy everything in my repository folder".
+    package: '$(Build.ArtifactStagingDirectory)/app.zip'
+    # ^ Deploy only the packaged contents of app/, so server.js and package.json
+    #   land together in /home/site/wwwroot and App Service can restore modules.
+    # Beginner note:
+    # After deployment, Azure should see files like server.js and package.json
+    # directly in the app's wwwroot folder, which is what your Node app expects.
