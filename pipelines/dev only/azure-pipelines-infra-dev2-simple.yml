@@ -20,7 +20,7 @@ pool:
 variables:
   terraformVersion: '1.5.0'
   azureServiceConnection: 'New_project1_servConn'
-  environment: 'dev'
+  environment: 'dev2'
 
 stages:
   # ============================================
