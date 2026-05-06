@@ -103,13 +103,13 @@ stages:
           # Replace the manifest image with the exact image built by this run.
           # This avoids deploying the mutable latest tag.
           - script: |
-              kubectl set image deployment/project2-dev2-K8-app \
-                project2-dev2-K8-app=$(acrName).azurecr.io/$(imageName):$(Build.BuildId)
+              kubectl set image deployment/project2-dev2-k8-app \
+                project2-dev2-k8-app=$(acrName).azurecr.io/$(imageName):$(Build.BuildId)
             displayName: 'Update Deployment Image'
 
           # Wait until Kubernetes confirms the new pods are running successfully.
           - script: |
-              kubectl rollout status deployment/project2-dev2-K8-app --timeout=180s
-              kubectl get deployment project2-dev2-K8-app
+              kubectl rollout status deployment/project2-dev2-k8-app --timeout=180s
+              kubectl get deployment project2-dev2-k8-app
               kubectl get service project2-dev2-K8-svc
             displayName: 'Verify AKS Rollout'
