@@ -12,7 +12,7 @@ trigger:
   paths:
     include:
       - app/**
-      - K8/**
+      - k8/**
       - pipelines/dev2/azure-pipelines-dev2-docker-build.yml
 
 # Which machine to run on
@@ -27,7 +27,7 @@ variables:
   azureServiceConnection: 'New_project1_servConn'
   aksResourceGroup: 'rg-dev2-pooja-demo'
   aksClusterName: 'aks-pooja-dev2-demo'
-  kubernetesManifest: 'K8/K8s-deploy.yaml'
+  kubernetesManifest: 'k8/k8s-deploy.yaml'
 
 stages:
   # ============================================
@@ -111,5 +111,5 @@ stages:
           - script: |
               kubectl rollout status deployment/project2-dev2-k8-app --timeout=180s
               kubectl get deployment project2-dev2-k8-app
-              kubectl get service project2-dev2-K8-svc
+              kubectl get service project2-dev2-k8-svc
             displayName: 'Verify AKS Rollout'
