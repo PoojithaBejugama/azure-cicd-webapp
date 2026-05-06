@@ -1,5 +1,5 @@
 # ============================================
-# INFRASTRUCTURE PIPELINE - DEVELOPMENT ONLY
+# INFRASTRUCTURE PIPELINE - DEV2
 # ============================================
 # This pipeline deploys Azure infrastructure using Terraform
 # Simplified version for learning - dev environment only
