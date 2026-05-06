@@ -1,0 +1,105 @@
+# ============================================
+# TERRAFORM DESTROY PIPELINE - DEV2
+# ============================================
+# Manual-only pipeline for deleting the dev2 AKS infrastructure.
+# This destroys resources managed by Terraform in infra/env/dev2:
+# Resource Group, AKS cluster, AKS node pool resources, ACR, and role assignments.
+
+trigger: none
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  terraformVersion: '1.5.0'
+  azureServiceConnection: 'New_project1_servConn'
+  terraformWorkingDirectory: 'infra/env/dev2'
+
+stages:
+  # ============================================
+  # STAGE 1: SHOW DESTROY PLAN
+  # ============================================
+  - stage: DestroyPlan
+    displayName: 'Plan Terraform Destroy'
+    jobs:
+      - job: PlanDestroy
+        displayName: 'Show what will be destroyed'
+        steps:
+          - checkout: self
+
+          # Install Terraform on the Azure DevOps agent.
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform $(terraformVersion)'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          # AzureCLI logs into Azure using the service connection.
+          # Terraform then uses that Azure login to read state and create a destroy plan.
+          - task: AzureCLI@2
+            displayName: 'Terraform Init and Destroy Plan'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+                cd $(terraformWorkingDirectory)
+                terraform init
+                terraform validate
+                terraform plan -destroy -out=tfplan-destroy
+
+          # Save the exact destroy plan so the Apply stage destroys what was reviewed.
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Destroy Plan'
+            inputs:
+              targetPath: '$(terraformWorkingDirectory)/tfplan-destroy'
+              artifact: 'tfplan-destroy-dev2'
+
+  # ============================================
+  # STAGE 2: APPLY DESTROY
+  # ============================================
+  - stage: DestroyApply
+    displayName: 'Apply Terraform Destroy'
+    dependsOn: DestroyPlan
+    condition: succeeded()
+    jobs:
+      - deployment: DestroyDev2
+        displayName: 'Destroy dev2 infrastructure'
+        environment: 'dev2'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                # Install Terraform again because deployment jobs run in a fresh job context.
+                - task: TerraformInstaller@0
+                  displayName: 'Install Terraform $(terraformVersion)'
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                # Download the destroy plan created in the previous stage.
+                - download: current
+                  artifact: 'tfplan-destroy-dev2'
+
+                # Apply the saved destroy plan.
+                # This deletes the Terraform-managed AKS cluster, node pool resources,
+                # ACR, role assignment, and resource group for dev2.
+                - task: AzureCLI@2
+                  displayName: 'Terraform Destroy'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      set -e
+                      cd $(terraformWorkingDirectory)
+                      terraform init
+                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-destroy-dev2/tfplan-destroy
+
+                # Print a final message. If the resource group was destroyed, output may be empty.
+                - script: |
+                    echo "dev2 Terraform destroy completed."
+                    echo "Deleted resources were managed from $(terraformWorkingDirectory)."
+                  displayName: 'Destroy Summary'

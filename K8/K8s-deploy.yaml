@@ -1,26 +1,29 @@
+#deployment runs and manages the app containers
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: myapp
+  name: project2-dev2-K8-app
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: myapp
+      app: project2-dev2-K8-app
   template:
     metadata:
       labels:
-        app: myapp
+        app: project2-dev2-K8-app
     spec:
       containers:
-      - name: myapp
-        image: myacrpoojademo.azurecr.io/ncpl-app:latest
+      - name: project2-dev2-K8-app
+        image: myacrpoojademo.azurecr.io/pooja-demo-app:v1
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
+        #set env variable called PORT = 3000
         env:
         - name: PORT
           value: "3000"
+          #CPU/memory requetss and limits
         resources:
           requests:
             cpu: "100m"
@@ -28,12 +31,14 @@ spec:
           limits:
             cpu: "500m"
             memory: "256Mi"
+            #rediness probe: checks if the app is ready for traffic every 5
         readinessProbe:
           httpGet:
             path: /
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
+          #checks if app is still alive every 20s
         livenessProbe:
           httpGet:
             path: /
@@ -41,14 +46,16 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 20
 ---
+#service exposes app
+#service is a stable network endpoint for pods. Pods can change but service stays stable 
 apiVersion: v1
 kind: Service
 metadata:
-  name: myapp-svc
+  name: project2-dev2-K8-svc
 spec:
   type: LoadBalancer
   selector:
-    app: myapp
+    app: project2-dev2-K8-app
   ports:
   - port: 80
     targetPort: 3000

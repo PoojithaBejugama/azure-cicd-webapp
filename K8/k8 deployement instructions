@@ -1,0 +1,14 @@
+“This one manifest creates both the workload and the public entry point.”
+
+The Point Of The Two Resources
+Deployment:
+Runs and manages the app containers.
+
+Service:
+Exposes the app so users or other systems can reach it.
+
+Without Deployment:
+No app is running.
+
+Without Service:
+The app may be running, but you cannot easily access it from outside the cluster.

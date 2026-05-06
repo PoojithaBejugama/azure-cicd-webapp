@@ -1,0 +1,115 @@
+# ============================================
+# AKS CI/CD PIPELINE
+# ============================================
+# This pipeline builds the Node app as a Docker image, pushes it to ACR,
+# deploys the Kubernetes manifest to AKS, updates the deployment image,
+# and verifies that the rollout completed.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - app/**
+      - K8/**
+      - pipelines/dev2/azure-pipelines-dev2-docker-build.yml
+
+# Which machine to run on
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Variables used by the build and deploy stages.
+# Update aksResourceGroup and aksClusterName to match your existing AKS cluster.
+variables:
+  acrName: 'myacrpoojademo'
+  imageName: 'pooja-demo-app'
+  azureServiceConnection: 'New_project1_servConn'
+  aksResourceGroup: 'rg-dev2-pooja-demo'
+  aksClusterName: 'aks-pooja-dev2-demo'
+  kubernetesManifest: 'K8/K8s-deploy.yaml'
+
+stages:
+  # ============================================
+  # STAGE 1: BUILD & PUSH
+  # ============================================
+  - stage: BuildAndPush
+    displayName: 'Build and Push Docker Image'
+    jobs:
+      - job: DockerBuild
+        displayName: 'Build and Push to ACR'
+        steps:
+          # Azure DevOps logs into Azure using the service connection,
+          # then logs Docker into Azure Container Registry.
+          - task: AzureCLI@2
+            displayName: 'Login to ACR'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az acr login --name $(acrName)
+
+          # Build one immutable image tag for this pipeline run.
+          # The Build.BuildId tag is the exact version deployed to AKS.
+          - script: |
+              cd app
+              docker build -t $(acrName).azurecr.io/$(imageName):$(Build.BuildId) .
+            displayName: 'Build Docker Image'
+
+          # Push the immutable build image to ACR so AKS can pull it.
+          - script: |
+              docker push $(acrName).azurecr.io/$(imageName):$(Build.BuildId)
+            displayName: 'Push to ACR'
+
+          # List ACR repositories and print the image that will be deployed.
+          - script: |
+              az acr repository list --name $(acrName) --output table
+              echo "Image pushed: $(acrName).azurecr.io/$(imageName):$(Build.BuildId)"
+            displayName: 'Verify Push Success'
+
+  # ============================================
+  # STAGE 2: DEPLOY TO AKS
+  # ============================================
+  - stage: DeployToAKS
+    displayName: 'Deploy to AKS'
+    dependsOn: BuildAndPush
+    condition: succeeded()
+    jobs:
+      - job: KubernetesDeploy
+        displayName: 'Apply Manifest and Verify Rollout'
+        steps:
+          - checkout: self
+
+          # Connect kubectl to the AKS cluster using the Azure service connection.
+          - task: AzureCLI@2
+            displayName: 'Connect to AKS'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az aks get-credentials \
+                  --resource-group $(aksResourceGroup) \
+                  --name $(aksClusterName) \
+                  --overwrite-existing
+
+          # Create or update the Deployment and Service from the manifest.
+          # The manifest contains the base Kubernetes shape of the app.
+          - script: |
+              kubectl apply -f $(kubernetesManifest)
+            displayName: 'Apply Kubernetes Manifest'
+
+          # Replace the manifest image with the exact image built by this run.
+          # This avoids deploying the mutable latest tag.
+          - script: |
+              kubectl set image deployment/project2-dev2-K8-app \
+                project2-dev2-K8-app=$(acrName).azurecr.io/$(imageName):$(Build.BuildId)
+            displayName: 'Update Deployment Image'
+
+          # Wait until Kubernetes confirms the new pods are running successfully.
+          - script: |
+              kubectl rollout status deployment/project2-dev2-K8-app --timeout=180s
+              kubectl get deployment project2-dev2-K8-app
+              kubectl get service project2-dev2-K8-svc
+            displayName: 'Verify AKS Rollout'
