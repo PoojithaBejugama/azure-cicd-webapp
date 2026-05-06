@@ -45,7 +45,7 @@ module "app_service" {
   sku_name            = var.app_service_sku
   node_version        = var.node_version
 
- 
+
 
   depends_on = [module.resource_group]
 }

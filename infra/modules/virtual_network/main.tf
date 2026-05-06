@@ -1,3 +1,3 @@
-resource "azurerm_netowrk_security_group" "dev-nsg"{
-    
+resource "azurerm_netowrk_security_group" "dev-nsg" {
+
 }

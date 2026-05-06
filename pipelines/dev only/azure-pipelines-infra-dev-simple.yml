@@ -20,7 +20,7 @@ pool:
 variables:
   terraformVersion: '1.5.0'
   azureServiceConnection: 'New_project1_servConn'
-  environment: 'dev'
+  environment: 'dev2'
 
 stages:
   # ============================================
@@ -41,13 +41,13 @@ stages:
 
           # Initialize Terraform (without backend to just check syntax)
           - script: |
-              cd infra
+              cd infra/env/dev2
               terraform init -backend=false
             displayName: 'Initialize Terraform'
 
           # Validate the configuration files
           - script: |
-              cd infra
+              cd infra/env/dev2
               terraform validate
             displayName: 'Validate Terraform Syntax'
 
@@ -78,7 +78,7 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                cd infra/env/dev
+                cd infra/env/dev2
                 # Download required providers and modules
                 terraform init -upgrade
 
@@ -90,7 +90,7 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                cd infra/env/dev
+                cd infra/env/dev2
                 # Create plan file showing all changes
                 terraform plan -out=tfplan
 
@@ -98,8 +98,8 @@ stages:
           - task: PublishPipelineArtifact@1
             displayName: 'Save Plan as Artifact'
             inputs:
-              targetPath: 'infra/env/dev/tfplan'
-              artifact: 'tfplan-dev'
+              targetPath: 'infra/env/dev2/tfplan'
+              artifact: 'tfplan-dev2'
 
   # ============================================
   # STAGE 3: APPLY
@@ -128,7 +128,7 @@ stages:
 
                 # Download the plan we created in the Plan stage
                 - download: current
-                  artifact: 'tfplan-dev'
+                  artifact: 'tfplan-dev2'
 
                 # Apply the changes to Azure
                 - task: AzureCLI@2
@@ -138,11 +138,11 @@ stages:
                     scriptType: 'bash'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
-                      cd infra/env/dev
+                      cd infra/env/dev2
                       # Initialize (downloads modules)
                       terraform init
                       # Apply the plan we created earlier
-                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-dev/tfplan
+                      terraform apply -auto-approve $(Pipeline.Workspace)/tfplan-dev2/tfplan
 
                 # Show what was created/changed
                 - task: AzureCLI@2
@@ -152,6 +152,6 @@ stages:
                     scriptType: 'bash'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
-                      cd infra/env/dev
+                      cd infra/env/dev2
                       echo "Resources created/updated:"
                       terraform output

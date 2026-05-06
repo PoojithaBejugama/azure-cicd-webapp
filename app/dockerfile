@@ -4,17 +4,24 @@ FROM node:20.11-alpine
 # Set working directory inside container
 WORKDIR /app
 
+# Run the app in production mode and align the container port with Kubernetes
+ENV NODE_ENV=production
+ENV PORT=3000
+
 # Copy package files first (better caching)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install only locked production dependencies
+RUN npm ci --omit=dev
 
 # Copy rest of the app
 COPY . .
+
+# Run as the non-root user included in the official Node image
+USER node
 
 # Expose port (match your app)
 EXPOSE 3000
 
 # Start app
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

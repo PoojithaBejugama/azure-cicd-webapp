@@ -1,10 +1,7 @@
-# ============================================
-# DEVELOPMENT ENVIRONMENT - ROOT CONFIGURATION
-# ============================================
-# Instantiates all child modules for the dev environment
+//dev2 - for AKS and ACR deployment
 
 locals {
-  env_short = "d"
+  env_short = "d2"
 
   resource_group_name = "rg-${var.environment_name}-${var.resource_prefix}-demo"
   plan_name           = "asp-${var.environment_name}-${var.resource_prefix}-demo"
@@ -33,42 +30,6 @@ module "resource_group" {
 }
 
 # ============================================
-# APPLICATION INSIGHTS MODULE
-# ============================================
-module "application_insights" {
-  source = "../../modules/application_insights"
-
-  app_insights_name   = local.app_insights_name
-  location            = var.location
-  resource_group_name = module.resource_group.resource_group_name
-  common_tags         = local.common_tags
-}
-
-# ============================================
-# APP SERVICE MODULE
-# ============================================
-module "app_service" {
-  source = "../../modules/app_service"
-
-  plan_name           = local.plan_name
-  app_name            = local.app_name
-  location            = var.location
-  resource_group_name = module.resource_group.resource_group_name
-  sku_name            = var.app_service_sku
-  node_version        = var.node_version
-
-  # Pass Application Insights connection string to web app
-  #app_settings = {
-  #  APPLICATIONINSIGHTS_CONNECTION_STRING = module.application_insights.connection_string
-  # }
-
-  #common_tags = local.common_tags
-
-  # Explicit dependency to ensure RG is created first
-  depends_on = [module.resource_group]
-}
-
-# ============================================
 # CONTAINER REGISTRY MODULE
 # ============================================
 module "container_registry" {
@@ -85,7 +46,6 @@ module "container_registry" {
   # Explicit dependency to ensure RG is created first
   depends_on = [module.resource_group]
 }
-
 # ============================================
 # AKS MODULE
 # ============================================
