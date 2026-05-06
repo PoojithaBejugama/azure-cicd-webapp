@@ -10,7 +10,7 @@ trigger:
       - main
   paths:
     include:
-      - infra/**
+      - infra/env/dev2/**
 
 # Which machine to run on
 pool:
